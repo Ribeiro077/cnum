@@ -74,9 +74,12 @@ def secante(a, b, f, TOL=1e-8, iter=100):
         x2 = x1 - f1 * (x1 - x0) / denominator
         if not math.isfinite(x2):
             raise ValueError("A iteração produziu um valor não finito.")
-        if abs(x2 - x1) <= TOL * max(1.0, abs(x2)):
+        f2 = f(x2)
+        if abs(f2) <= TOL:
             return x2, i
+        if abs(x2 - x1) <= TOL * max(1.0, abs(x2)):
+            raise RuntimeError("O método da secante estagnou sem atingir a tolerância.")
         x0, x1 = x1, x2
-        f0, f1 = f1, f(x1)
+        f0, f1 = f1, f2
 
     raise RuntimeError("O método da secante não convergiu.")
