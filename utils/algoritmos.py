@@ -3,86 +3,62 @@ import sys
 
 
 def bissecao(f, a, b, TOL, iter=100):
-    """Encontra uma raiz em [a, b] pelo método da bisseção."""
     if TOL <= 0:
         raise ValueError("A tolerância deve ser positiva.")
-    max_iter = int(iter)
-    if max_iter <= 0:
-        raise ValueError("O número máximo de iterações deve ser positivo.")
-
-    fa = f(a)
-    fb = f(b)
+    maximum = int(iter)
+    fa, fb = f(a), f(b)
     if fa == 0:
         return a, 0
     if fb == 0:
         return b, 0
-    if fa * fb > 0:
+    if fa*fb > 0:
         raise ValueError("Nenhuma raiz encontrada no intervalo.")
 
-    c = (a + b) / 2.0
-    for i in range(1, max_iter + 1):
-        c = (a + b) / 2.0
-        fc = f(c)
-        if fc == 0 or abs(b - a) / 2.0 <= TOL:
-            return c, i
-        if fa * fc < 0:
-            b, fb = c, fc
+    midpoint = (a+b)/2
+    for count in range(1, maximum+1):
+        midpoint = (a+b)/2
+        fm = f(midpoint)
+        if fm == 0 or abs(b-a)/2 <= TOL:
+            return midpoint, count
+        if fa*fm < 0:
+            b, fb = midpoint, fm
         else:
-            a, fa = c, fc
-
-    return c, max_iter
+            a, fa = midpoint, fm
+    return midpoint, maximum
 
 
 def pontofixo(a, g, TOL=1e-8, iter=1000):
-    """Executa x_(n+1)=g(x_n) até estabilizar."""
-    if TOL <= 0:
-        raise ValueError("A tolerância deve ser positiva.")
-    x = float(a)
+    current = float(a)
     for _ in range(int(iter)):
-        next_x = float(g(x))
-        if not math.isfinite(next_x):
+        following = float(g(current))
+        if not math.isfinite(following):
             raise ValueError("A iteração produziu um valor não finito.")
-        if abs(next_x - x) <= TOL * max(1.0, abs(next_x)):
-            return next_x
-        x = next_x
+        if abs(following-current) <= TOL:
+            return following
+        current = following
     raise RuntimeError("O método do ponto fixo não convergiu.")
 
 
 def newton_raphson(a, f, TOL=1e-8, df=None, iter=100):
-    """Newton-Raphson com derivada analítica ou diferença central."""
     def numerical_derivative(x):
-        h = math.sqrt(sys.float_info.epsilon) * max(1.0, abs(x))
-        return (f(x + h) - f(x - h)) / (2.0 * h)
+        step = math.sqrt(sys.float_info.epsilon)*max(1.0, abs(x))
+        return (f(x+step)-f(x-step))/(2*step)
 
     derivative = df or numerical_derivative
-
-    def iteration(x):
-        slope = derivative(x)
-        if abs(slope) <= sys.float_info.epsilon:
-            raise ZeroDivisionError("Derivada nula ou muito próxima de zero.")
-        return x - f(x) / slope
-
-    return pontofixo(a, iteration, TOL, iter)
+    return pontofixo(a, lambda x: x-f(x)/derivative(x), TOL, iter)
 
 
 def secante(a, b, f, TOL=1e-8, iter=100):
-    """Método da secante com controle de convergência."""
-    x0, x1 = float(a), float(b)
-    f0, f1 = f(x0), f(x1)
-
+    previous, current = float(a), float(b)
+    f_previous, f_current = f(previous), f(current)
     for _ in range(int(iter)):
-        denominator = f1 - f0
-        if abs(denominator) <= sys.float_info.epsilon:
-            raise ZeroDivisionError("Denominador nulo ou muito próximo de zero.")
-        x2 = x1 - f1 * (x1 - x0) / denominator
-        if not math.isfinite(x2):
-            raise ValueError("A iteração produziu um valor não finito.")
-        f2 = f(x2)
-        if abs(f2) <= TOL:
-            return x2
-        if abs(x2 - x1) <= TOL * max(1.0, abs(x2)):
-            raise RuntimeError("O método da secante estagnou sem atingir a tolerância.")
-        x0, x1 = x1, x2
-        f0, f1 = f1, f2
-
+        difference = f_current-f_previous
+        if abs(difference) <= sys.float_info.epsilon:
+            raise ZeroDivisionError("Denominador nulo no método da secante.")
+        following = current-f_current*(current-previous)/difference
+        f_following = f(following)
+        if abs(following-current) <= TOL or abs(f_following) <= TOL:
+            return following
+        previous, current = current, following
+        f_previous, f_current = f_current, f_following
     raise RuntimeError("O método da secante não convergiu.")
