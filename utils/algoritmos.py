@@ -178,3 +178,66 @@ def seidel(A: np.ndarray, B: np.ndarray, k: int, TOL: float) -> np.ndarray:
         if np.linalg.norm(x - anterior) < TOL:
             return x
     return x
+
+
+def JN(x, F, eps=1e-8):
+    """Aproxima o Jacobiano de F em x por diferenças finitas centradas."""
+    x = np.asarray(x, dtype=float)
+    f0 = np.asarray(F(x), dtype=float)
+    n = x.size
+    Jnum = np.zeros((n, n), dtype=float)
+
+    for j in range(n):
+        step = eps * max(1.0, abs(x[j]))
+        dx = np.zeros_like(x)
+        dx[j] = step
+        f_plus = np.asarray(F(x + dx), dtype=float)
+        f_minus = np.asarray(F(x - dx), dtype=float)
+        Jnum[:, j] = (f_plus - f_minus) / (2 * step)
+
+    if Jnum.shape != (n, n):
+        raise ValueError("O Jacobiano gerado não tem a dimensão esperada.")
+    return Jnum
+
+
+def G(x, F, J):
+    """Uma iteração de Newton para sistemas não lineares: x - J^{-1} F(x)."""
+    x = np.asarray(x, dtype=float)
+    Fx = np.asarray(F(x), dtype=float)
+    Jx = np.asarray(J(x), dtype=float)
+    return x - np.linalg.solve(Jx, Fx)
+
+
+def GN(x, F, eps=1e-8):
+    """Uma iteração de Newton usando Jacobiano aproximado numericamente."""
+    x = np.asarray(x, dtype=float)
+    Fx = np.asarray(F(x), dtype=float)
+    Jx = JN(x, F, eps=eps)
+    return x - np.linalg.solve(Jx, Fx)
+
+
+def fixed_point(a, g, TOL=1e-8, iter=1000):
+    """Iteração de ponto fixo genérica para uma função vetorial."""
+    current = np.asarray(a, dtype=float)
+    for _ in range(int(iter)):
+        following = np.asarray(g(current), dtype=float)
+        if np.linalg.norm(following - current, ord=np.inf) <= TOL:
+            return following
+        current = following
+    raise RuntimeError("O método do ponto fixo não convergiu.")
+
+
+def newton_sistema(x0, F, J=None, TOL=1e-8, iter=100):
+    """Resolve F(x)=0 pelo método de Newton-Raphson em dimensão n."""
+    x = np.asarray(x0, dtype=float)
+    jacobiano = J or (lambda v: JN(v, F))
+    for _ in range(int(iter)):
+        Fx = np.asarray(F(x), dtype=float)
+        if np.linalg.norm(Fx, ord=np.inf) <= TOL:
+            return x
+        Jx = np.asarray(jacobiano(x), dtype=float)
+        delta = np.linalg.solve(Jx, Fx)
+        x = x - delta
+        if np.linalg.norm(delta, ord=np.inf) <= TOL:
+            return x
+    raise RuntimeError("O método de Newton-Raphson não convergiu.")
