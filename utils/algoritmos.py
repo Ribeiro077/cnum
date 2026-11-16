@@ -241,3 +241,65 @@ def newton_sistema(x0, F, J=None, TOL=1e-8, iter=100):
         if np.linalg.norm(delta, ord=np.inf) <= TOL:
             return x
     raise RuntimeError("O método de Newton-Raphson não convergiu.")
+
+
+# Métodos adicionados para as semanas 9 a 13
+def newton_coef(x,y):
+    x=np.asarray(x,dtype=float); a=np.asarray(y,dtype=float).copy()
+    if len(x)!=len(a) or len(x)==0 or len(np.unique(x))!=len(x): raise ValueError("x e y devem ter mesmo tamanho e x distintos.")
+    for j in range(1,len(x)): a[j:]=(a[j:]-a[j-1:-1])/(x[j:]-x[:-j])
+    return a
+
+def newton(x,y):
+    x=np.asarray(x,dtype=float); a=newton_coef(x,y); p=np.poly1d([a[-1]])
+    for k in range(len(a)-2,-1,-1): p=np.poly1d([1.,-x[k]])*p+a[k]
+    return np.asarray(p.c,dtype=float)
+
+def lagrange(x,y):
+    x=np.asarray(x,dtype=float); y=np.asarray(y,dtype=float); p=np.poly1d([0.])
+    if len(x)!=len(y) or len(x)==0 or len(np.unique(x))!=len(x): raise ValueError("x e y devem ter mesmo tamanho e x distintos.")
+    for i in range(len(x)):
+        q=np.poly1d([1.]); d=1.
+        for j in range(len(x)):
+            if i!=j: q*=np.poly1d([1.,-x[j]]); d*=x[i]-x[j]
+        p+=y[i]*q/d
+    return np.asarray(p.c,dtype=float)
+
+def polinomial(x,y):
+    x=np.asarray(x,dtype=float); y=np.asarray(y,dtype=float)
+    if len(x)!=len(y) or len(x)==0 or len(np.unique(x))!=len(x): raise ValueError("x e y devem ter mesmo tamanho e x distintos.")
+    return np.linalg.solve(np.vander(x,N=len(x),increasing=False),y)
+
+def regressao(x,y,v):
+    X=np.asarray(v(np.asarray(x,dtype=float)),dtype=float); y=np.asarray(y,dtype=float)
+    if X.ndim!=2 or X.shape[0]!=y.shape[0]: raise ValueError("Dimensões incompatíveis.")
+    return np.linalg.lstsq(X,y,rcond=None)[0]
+
+def dp(f,x,h):
+    if h==0: raise ValueError("h deve ser diferente de zero.")
+    return (f(x+h)-f(x))/h
+
+def dr(f,x,h):
+    if h==0: raise ValueError("h deve ser diferente de zero.")
+    return (f(x)-f(x-h))/h
+
+def dc(f,x,h):
+    if h==0: raise ValueError("h deve ser diferente de zero.")
+    return (f(x+h)-f(x-h))/(2*h)
+
+def medio(f,a,b): return (b-a)*f((a+b)/2)
+def trapezio(f,a,b): return (b-a)*(f(a)+f(b))/2
+def simpson(f,a,b):
+    m=(a+b)/2
+    return (b-a)*(f(a)+4*f(m)+f(b))/6
+
+def integral(metodo,f,a,b,n=1000):
+    n=int(n)
+    if n<1: raise ValueError("n deve ser positivo.")
+    if metodo is simpson and n%2: raise ValueError("Simpson composto exige n par.")
+    h=(b-a)/n
+    if metodo is medio: return sum(metodo(f,a+i*h,a+(i+1)*h) for i in range(n))
+    if metodo is trapezio: return h*(.5*f(a)+.5*f(b)+sum(f(a+i*h) for i in range(1,n)))
+    if metodo is simpson:
+        return h/3*(f(a)+f(b)+4*sum(f(a+i*h) for i in range(1,n,2))+2*sum(f(a+i*h) for i in range(2,n,2)))
+    return sum(metodo(f,a+i*h,a+(i+1)*h) for i in range(n))
